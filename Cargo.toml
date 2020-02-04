@@ -8,9 +8,14 @@ build = "build.rs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-tokio = { version = "0.2", features = ["rt-core", "macros"] }
-tokio-rustls = "0.12"
+async-stream = "0.2"
 tonic = { git = "https://github.com/hyperium/tonic", features = ["tls", "tls-roots"] }
+prost = "0.6"
+futures = { version = "0.3" }
+futures-core = "0.3"
+futures-util = "0.3"
+futures-executor = "0.3"
+tokio = { version = "0.2", features = ["rt-core", "macros"] }
 
 [build-dependencies]
 tonic-build = { git = "https://github.com/hyperium/tonic" }
