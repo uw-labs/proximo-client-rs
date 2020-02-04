@@ -29,62 +29,48 @@ impl Sink {
 
     pub async fn publish_messages(
         &mut self,
-        cancel: mpsc::Receiver<()>,
-        acks: mpsc::Sender<Message>,
-        messages: mpsc::Receiver<Message>,
+        _cancel: mpsc::Receiver<()>, // TODO: deal with cancellation
+        _acks: mpsc::Sender<Message>,
+        mut messages: mpsc::Receiver<Message>,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        do_pub_messages(
-            &mut self.client,
-            cancel,
-            acks,
-            messages,
-            self.topic.to_string(),
-        )
-        .await
-    }
-}
 
-async fn do_pub_messages(
-    client: &mut MessageSinkClient<Channel>,
-    _cancel: mpsc::Receiver<()>,
-    _acks: mpsc::Sender<Message>,
-    mut messages: mpsc::Receiver<Message>,
-    topic: String,
-) -> Result<(), Box<dyn Error>> {
-    let outbound = async_stream::stream! {
-        let req = PublisherRequest{
-            msg: None,
-            start_request: Some(StartPublishRequest{topic: topic.to_string()}),
-        };
-        yield req;
+        let topic = self.topic.to_string();
 
-        loop {
-            // TODO: deal with cancellation.
-            match messages.recv().await {
-                None => {
-                    panic!("when does this happen?")
-                }
-                Some(x) => {
-                    let req = PublisherRequest {
-                            msg: Some(x),
-                            start_request:None,
-                    };
+        let outbound = async_stream::stream! {
+            let req = PublisherRequest{
+                msg: None,
+                start_request: Some(StartPublishRequest{topic}),
+            };
+            yield req;
 
-                    yield req;
+            loop {
+                // TODO: deal with cancellation.
+                match messages.recv().await {
+                    None => {
+                        panic!("when does this happen?")
+                    }
+                    Some(x) => {
+                        let req = PublisherRequest {
+                                msg: Some(x),
+                                start_request:None,
+                        };
+
+                        yield req;
+                    }
                 }
             }
+        };
+
+        let response = self.client.publish(Request::new(outbound)).await?;
+
+        let mut inbound = response.into_inner();
+
+        while let Some(m) = inbound.message().await? {
+            println!("NOTE = {:?}", m);
         }
-    };
 
-    let response = client.publish(Request::new(outbound)).await?;
-
-    let mut inbound = response.into_inner();
-
-    while let Some(m) = inbound.message().await? {
-        println!("NOTE = {:?}", m);
+        Ok(())
     }
-
-    Ok(())
 }
 
 #[cfg(test)]
