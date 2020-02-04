@@ -24,10 +24,7 @@ impl Sink {
     ) -> Result<Sink, Box<dyn std::error::Error>> {
         let client = block_on(async { MessageSinkClient::connect(url).await })?;
 
-        return Ok(Sink {
-            client: client,
-            topic: topic,
-        });
+        Ok(Sink { client, topic })
     }
 
     pub async fn publish_messages(
@@ -36,14 +33,14 @@ impl Sink {
         acks: mpsc::Sender<Message>,
         messages: mpsc::Receiver<Message>,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        return do_pub_messages(
+        do_pub_messages(
             &mut self.client,
             cancel,
             acks,
             messages,
             self.topic.to_string(),
         )
-        .await;
+        .await
     }
 }
 
