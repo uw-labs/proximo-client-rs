@@ -48,9 +48,9 @@ impl Sink {
                     None => {
                         panic!("when does this happen?")
                     }
-                    Some(x) => {
+                    Some(msg) => {
                         let req = PublisherRequest {
-                                msg: Some(x),
+                                msg: Some(msg),
                                 start_request:None,
                         };
 
