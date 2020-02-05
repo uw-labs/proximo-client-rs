@@ -33,7 +33,6 @@ impl Sink {
         _acks: mpsc::Sender<Message>,
         mut messages: mpsc::Receiver<Message>,
     ) -> Result<(), Box<dyn std::error::Error>> {
-
         let topic = self.topic.to_string();
 
         let outbound = async_stream::stream! {
@@ -65,11 +64,15 @@ impl Sink {
 
         let mut inbound = response.into_inner();
 
-        while let Some(m) = inbound.message().await? {
-            println!("NOTE = {:?}", m);
+        loop {
+            // TODO: deal with cancellation.
+            match inbound.message().await? {
+                None => panic!("when does this happen?"),
+                Some(conf) => {
+                    println!("confirmation = {:?}", conf);
+                }
+            }
         }
-
-        Ok(())
     }
 }
 
