@@ -19,12 +19,12 @@ pub struct Sink {
 
 impl Sink {
     pub fn new(
-        url: String,
-        topic: String,
+        url: &str,
+        topic: &str,
     ) -> Result<Sink, Box<dyn std::error::Error>> {
-        let client = block_on(async { MessageSinkClient::connect(url).await })?;
+        let client = block_on(async { MessageSinkClient::connect(url.to_string()).await })?;
 
-        Ok(Sink { client, topic })
+        Ok(Sink { client, topic: topic.to_string() })
     }
 
     pub async fn publish_messages(
