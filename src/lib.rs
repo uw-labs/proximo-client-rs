@@ -2,7 +2,6 @@ pub mod proximo {
     tonic::include_proto!("proximo");
 }
 
-use futures::executor::block_on;
 use tonic::transport::Channel;
 use tonic::Request;
 
@@ -17,22 +16,27 @@ pub struct Sink {
 }
 
 impl Sink {
-    pub fn new(
+    pub async fn new(
         url: &str,
         topic: &str,
     ) -> Result<Sink, Box<dyn std::error::Error>> {
-        let client = block_on(async { MessageSinkClient::connect(url.to_string()).await })?;
+        let client = MessageSinkClient::connect(url.to_string()).await?;
 
-        Ok(Sink { client, topic: topic.to_string() })
+        Ok(Sink {
+            client,
+            topic: topic.to_string(),
+        })
     }
 
     pub async fn publish_messages(
         &mut self,
         _cancel: mpsc::Receiver<()>, // TODO: deal with cancellation
         mut messages: mpsc::Receiver<Message>,
-        _acks: mpsc::Sender<Message>,
+        mut acks: mpsc::Sender<Message>,
     ) -> Result<(), Box<dyn std::error::Error>> {
         let topic = self.topic.to_string();
+
+        let (mut toack_tx, mut toack_rx) = mpsc::channel(16);
 
         let outbound = async_stream::stream! {
             let req = PublisherRequest{
@@ -49,9 +53,18 @@ impl Sink {
                     }
                     Some(msg) => {
                         let req = PublisherRequest {
-                                msg: Some(msg),
+                                msg: Some(msg.clone()),
                                 start_request:None,
                         };
+
+                        match toack_tx.send(msg).await {
+                            Ok(()) => {
+                                // do nothing
+                            }
+                            Err(e) => {
+                                panic!("handle this properly")
+                            }
+                        }
 
                         yield req;
                     }
@@ -68,17 +81,18 @@ impl Sink {
             match inbound.message().await? {
                 None => panic!("when does this happen?"),
                 Some(conf) => {
-                    println!("confirmation = {:?}", conf);
+                    match toack_rx.recv().await {
+                        None => panic!("when does this happen?"),
+                        Some(to_ack) => {
+                            if to_ack.id != conf.msg_id {
+                                panic!("handle unexpected ack order")
+                            }
+                            acks.send(to_ack).await?;
+                        }
+                    }
                 }
             }
         }
     }
 }
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
-    }
-}
