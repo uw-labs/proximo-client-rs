@@ -30,8 +30,8 @@ impl Sink {
     pub async fn publish_messages(
         &mut self,
         _cancel: mpsc::Receiver<()>, // TODO: deal with cancellation
-        _acks: mpsc::Sender<Message>,
         mut messages: mpsc::Receiver<Message>,
+        _acks: mpsc::Sender<Message>,
     ) -> Result<(), Box<dyn std::error::Error>> {
         let topic = self.topic.to_string();
 
