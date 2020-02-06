@@ -3,7 +3,6 @@ pub mod proximo {
 }
 
 use futures::executor::block_on;
-use std::error::Error;
 use tonic::transport::Channel;
 use tonic::Request;
 
