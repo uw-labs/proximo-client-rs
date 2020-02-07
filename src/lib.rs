@@ -49,7 +49,7 @@ impl Sink {
                 // TODO: deal with cancellation.
                 match messages.recv().await {
                     None => {
-                        panic!("when does this happen?")
+                        panic!("empty message : when does this happen?")
                     }
                     Some(msg) => {
                         let req = PublisherRequest {
@@ -79,7 +79,9 @@ impl Sink {
         loop {
             // TODO: deal with cancellation.
             match inbound.message().await? {
-                None => panic!("when does this happen?"),
+                None => panic!(
+                    "empty message from proximo.  when does this happen?"
+                ),
                 Some(conf) => {
                     match toack_rx.recv().await {
                         None => panic!("when does this happen?"),
