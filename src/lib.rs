@@ -82,19 +82,39 @@ impl Sink {
                 None => panic!(
                     "empty message from proximo.  when does this happen?"
                 ),
-                Some(conf) => {
-                    match toack_rx.recv().await {
-                        None => panic!("when does this happen?"),
-                        Some(to_ack) => {
-                            if to_ack.id != conf.msg_id {
-                                panic!("handle unexpected ack order")
-                            }
-                            acks.send(to_ack).await?;
+                Some(conf) => match toack_rx.recv().await {
+                    None => panic!("when does this happen?"),
+                    Some(to_ack) => {
+                        if to_ack.id != conf.msg_id {
+                            return Err(Box::new(ProximoError::new(
+                                "unexpected ack order",
+                            )));
                         }
+                        acks.send(to_ack).await?;
                     }
-                }
+                },
             }
         }
     }
 }
 
+use std::fmt;
+
+#[derive(Debug)]
+struct ProximoError {
+    err: String,
+}
+
+impl std::error::Error for ProximoError {}
+
+impl ProximoError {
+    fn new(s: &str) -> Self {
+        ProximoError { err: s.to_string() }
+    }
+}
+
+impl fmt::Display for ProximoError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Oh no, something bad went down")
+    }
+}
