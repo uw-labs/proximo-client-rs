@@ -2,12 +2,11 @@ pub mod proximo {
     tonic::include_proto!("proximo");
 }
 
-use tonic::transport::Channel;
-use tonic::Request;
-
 use proximo::message_sink_client::MessageSinkClient;
 use proximo::{Message, PublisherRequest, StartPublishRequest};
 use tokio::sync::mpsc;
+use tonic::transport::Channel;
+use tonic::Request;
 
 pub struct Sink {
     client: MessageSinkClient<Channel>,
