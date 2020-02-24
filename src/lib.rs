@@ -29,7 +29,7 @@ impl Sink {
 
     pub async fn publish_messages(
         &mut self,
-        _cancel: mpsc::Receiver<()>, // TODO: deal with cancellation
+        mut cancel: mpsc::Receiver<()>, // TODO: deal with cancellation
         mut messages: mpsc::Receiver<Message>,
         mut acks: mpsc::Sender<Message>,
     ) -> Result<(), Box<dyn std::error::Error>> {
@@ -76,22 +76,40 @@ impl Sink {
         let mut inbound = response.into_inner();
 
         loop {
-            // TODO: deal with cancellation.
-            match inbound.message().await? {
-                None => panic!(
-                    "empty message from proximo.  when does this happen?"
-                ),
-                Some(conf) => match toack_rx.recv().await {
-                    None => panic!("when does this happen?"),
-                    Some(to_ack) => {
-                        if to_ack.id != conf.msg_id {
-                            return Err(Box::new(ProximoError::new(
-                                "unexpected ack order",
-                            )));
+            tokio::select! {
+
+                c = cancel.recv() => {
+                    match c {
+                        None => panic!(
+                            "empty cancel.  when does this happen?"
+                        ),
+                        Some(()) => {
+                            // cancelled, so return
+                            println!("cancel recv'd - exiting");
+                            return Ok(());
                         }
-                        acks.send(to_ack).await?;
                     }
-                },
+                }
+
+                m = inbound.message() => {
+                    match m? {
+                        None => panic!(
+                            "empty message from proximo.  when does this happen?"
+                        ),
+                        Some(conf) => match toack_rx.recv().await {
+                            None => panic!("when does this happen?"),
+                            Some(to_ack) => {
+                                if to_ack.id != conf.msg_id {
+                                    return Err(Box::new(ProximoError::new(
+                                        "unexpected ack order",
+                                    )));
+                                }
+                                acks.send(to_ack).await?;
+                            }
+                        },
+
+                    }
+                }
             }
         }
     }
