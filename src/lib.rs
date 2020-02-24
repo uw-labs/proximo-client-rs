@@ -6,7 +6,6 @@ use tonic::transport::Channel;
 use tonic::Request;
 
 use proximo::message_sink_client::MessageSinkClient;
-//use proximo::{Confirmation, Message, PublisherRequest, StartPublishRequest};
 use proximo::{Message, PublisherRequest, StartPublishRequest};
 use tokio::sync::mpsc;
 
