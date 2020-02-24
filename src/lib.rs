@@ -28,7 +28,7 @@ impl Sink {
 
     pub async fn publish_messages(
         &mut self,
-        mut cancel: mpsc::Receiver<()>, // TODO: deal with cancellation
+        mut cancel: mpsc::Receiver<()>,
         mut messages: mpsc::Receiver<Message>,
         mut acks: mpsc::Sender<Message>,
     ) -> Result<(), Box<dyn std::error::Error>> {
