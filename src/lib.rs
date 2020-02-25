@@ -44,7 +44,8 @@ impl Sink {
             yield req;
 
             loop {
-                // TODO: deal with cancellation.
+                // TODO: Deal with cancellation, assuming we need to here?
+
                 match messages.recv().await {
                     None => {
                         panic!("empty message : when does this happen?")
