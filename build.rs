@@ -1,3 +1,7 @@
 fn main() {
-    tonic_build::compile_protos("proto/proximo.proto").unwrap();
+    tonic_build::configure()
+        .build_client(true)
+        .build_server(false)
+        .compile(&["proto/proximo.proto"], &["proto"])
+        .unwrap();
 }
