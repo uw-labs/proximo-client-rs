@@ -5,8 +5,6 @@ authors = ["Martin Garton <garton@gmail.com>"]
 edition = "2018"
 build = "build.rs"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
 async-stream = "0.2"
 tonic = { version = "0.1.1", features = ["tls", "tls-roots"] }
