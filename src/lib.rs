@@ -58,14 +58,7 @@ impl Sink {
 
         let _jh: JoinHandle<Result<(), ProximoError>> = tokio::spawn(
             async move {
-                let response = client.publish(Request::new(outbound)).await;
-
-                let response = match response {
-                    Ok(resp) => resp,
-                    Err(_e) => {
-                        panic!("handle this properly");
-                    }
-                };
+                let response = client.publish(Request::new(outbound)).await?;
 
                 let mut inbound = response.into_inner();
 
