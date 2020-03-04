@@ -1,8 +1,7 @@
 extern crate proximo_client;
 
 use proximo_client::proximo::Message;
-use proximo_client::Sink;
-use std::io;
+use proximo_client::{ProximoError, Sink};
 use std::process::{Child, Command, Stdio};
 use std::thread;
 use std::time;
@@ -16,7 +15,7 @@ async fn test_all() {
     do_test_all().await.unwrap();
 }
 
-async fn do_test_all() -> io::Result<()> {
+async fn do_test_all() -> Result<(), Box<dyn std::error::Error>> {
     let mut cmds = ChildDropper::new();
 
     let nats = Command::new("nats-streaming-server")
@@ -48,12 +47,12 @@ async fn do_test_all() -> io::Result<()> {
 
     cmds.track(plumber);
 
-    do_publishes().await.unwrap();
+    do_publishes().await?;
 
     Ok(())
 }
 
-async fn do_publishes() -> Result<(), Box<dyn std::error::Error>> {
+async fn do_publishes() -> Result<(), ProximoError> {
     let mut s = Sink::new("http://localhost:6868", "topic1").await?;
 
     for id in 1..10 {
@@ -89,4 +88,3 @@ impl std::ops::Drop for ChildDropper {
         }
     }
 }
-
