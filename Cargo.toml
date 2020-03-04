@@ -9,7 +9,7 @@ build = "build.rs"
 
 [dependencies]
 async-stream = "0.2"
-tonic = { git = "https://github.com/hyperium/tonic", features = ["tls", "tls-roots"] }
+tonic = { version = "0.1.1", features = ["tls", "tls-roots"] }
 prost = "0.6"
 futures = { version = "0.3" }
 futures-core = "0.3"
