@@ -87,10 +87,7 @@ impl Sink {
                                     )));
                                 }
                                 */
-                                match to_ack.send(Ok(())).await {
-                                    Ok(()) => {}
-                                    Err(_e) => panic!("handle properly"),
-                                }
+                                to_ack.send(Ok(())).await?
                             }
                         },
                     }
@@ -157,6 +154,16 @@ impl From<tonic::transport::Error> for ProximoError {
 
 impl From<mpsc::error::SendError<MessageRequest>> for ProximoError {
     fn from(err: mpsc::error::SendError<MessageRequest>) -> ProximoError {
+        ProximoError {
+            err: format!("{}", err),
+        }
+    }
+}
+
+impl From<mpsc::error::SendError<Result<(), ProximoError>>> for ProximoError {
+    fn from(
+        err: mpsc::error::SendError<Result<(), ProximoError>>,
+    ) -> ProximoError {
         ProximoError {
             err: format!("{}", err),
         }
