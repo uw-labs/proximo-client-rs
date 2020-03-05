@@ -56,23 +56,16 @@ impl Sink {
             }
         };
 
-        let _jh: JoinHandle<Result<(), ProximoError>> = tokio::spawn(
-            async move {
+        let _jh: JoinHandle<Result<(), ProximoError>> =
+            tokio::spawn(async move {
                 let response = client.publish(Request::new(outbound)).await?;
 
                 let mut inbound = response.into_inner();
 
                 loop {
-                    let m = inbound.message().await;
-                    let m1;
-                    match m {
-                    Ok(m) => m1 = m,
-                    Err(_e) => {
-                        panic!("error getting grpc stream response. deal with this properly")
-                    }
-                };
+                    let m = inbound.message().await?;
 
-                    match m1 {
+                    match m {
                         None => panic!(
                         "empty message from proximo.  when does this happen?"
                     ),
@@ -92,8 +85,7 @@ impl Sink {
                         },
                     }
                 }
-            },
-        );
+            });
 
         Ok(Sink {
             // client,
