@@ -5,6 +5,7 @@ pub mod proximo {
 use proximo::message_sink_client::MessageSinkClient;
 use proximo::{Message, PublisherRequest, StartPublishRequest};
 use tokio::sync::mpsc;
+use tokio::task::JoinHandle;
 use tonic::Request;
 
 pub struct Sink {
@@ -55,52 +56,54 @@ impl Sink {
             }
         };
 
-        tokio::spawn(async move {
-            let response = client.publish(Request::new(outbound)).await;
+        let _jh: JoinHandle<Result<(), ProximoError>> = tokio::spawn(
+            async move {
+                let response = client.publish(Request::new(outbound)).await;
 
-            let response = match response {
-                Ok(resp) => resp,
-                Err(_e) => {
-                    panic!("handle this properly");
-                }
-            };
+                let response = match response {
+                    Ok(resp) => resp,
+                    Err(_e) => {
+                        panic!("handle this properly");
+                    }
+                };
 
-            let mut inbound = response.into_inner();
+                let mut inbound = response.into_inner();
 
-            loop {
-                let m = inbound.message().await;
-                let m1;
-                match m {
+                loop {
+                    let m = inbound.message().await;
+                    let m1;
+                    match m {
                     Ok(m) => m1 = m,
                     Err(_e) => {
                         panic!("error getting grpc stream response. deal with this properly")
                     }
                 };
 
-                match m1 {
-                    None => panic!(
+                    match m1 {
+                        None => panic!(
                         "empty message from proximo.  when does this happen?"
                     ),
-                    Some(_conf) => match toack_rx.recv().await {
-                        None => panic!("when does this happen?"),
-                        Some(mut to_ack) => {
-                            /*
-                            TODO: check the id is the one expected?
-                            if to_ack.id != conf.msg_id {
-                                return Err(Box::new(ProximoError::new(
-                                    "unexpected ack order",
-                                )));
+                        Some(_conf) => match toack_rx.recv().await {
+                            None => panic!("when does this happen?"),
+                            Some(mut to_ack) => {
+                                /*
+                                TODO: check the id is the one expected?
+                                if to_ack.id != conf.msg_id {
+                                    return Err(Box::new(ProximoError::new(
+                                        "unexpected ack order",
+                                    )));
+                                }
+                                */
+                                match to_ack.send(Ok(())).await {
+                                    Ok(()) => {}
+                                    Err(_e) => panic!("handle properly"),
+                                }
                             }
-                            */
-                            match to_ack.send(Ok(())).await {
-                                Ok(()) => {}
-                                Err(_e) => panic!("handle properly"),
-                            }
-                        }
-                    },
+                        },
+                    }
                 }
-            }
-        });
+            },
+        );
 
         Ok(Sink {
             // client,
