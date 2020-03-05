@@ -130,25 +130,19 @@ impl fmt::Display for ProximoError {
 
 impl From<tonic::Status> for ProximoError {
     fn from(err: tonic::Status) -> ProximoError {
-        ProximoError {
-            err: format!("{}", err),
-        }
+        ProximoError { err: format!("{}", err) }
     }
 }
 
 impl From<tonic::transport::Error> for ProximoError {
     fn from(err: tonic::transport::Error) -> ProximoError {
-        ProximoError {
-            err: format!("{}", err),
-        }
+        ProximoError { err: format!("{}", err) }
     }
 }
 
 impl From<mpsc::error::SendError<MessageRequest>> for ProximoError {
     fn from(err: mpsc::error::SendError<MessageRequest>) -> ProximoError {
-        ProximoError {
-            err: format!("{}", err),
-        }
+        ProximoError { err: format!("{}", err) }
     }
 }
 
@@ -156,8 +150,6 @@ impl From<mpsc::error::SendError<Result<(), ProximoError>>> for ProximoError {
     fn from(
         err: mpsc::error::SendError<Result<(), ProximoError>>,
     ) -> ProximoError {
-        ProximoError {
-            err: format!("{}", err),
-        }
+        ProximoError { err: format!("{}", err) }
     }
 }
