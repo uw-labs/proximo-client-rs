@@ -6,24 +6,18 @@ use std::process::{Child, Command, Stdio};
 use std::thread;
 use std::time;
 
-struct ChildDropper {
-    children: Vec<Child>,
-}
-
 #[tokio::test]
 async fn test_all() {
     do_test_all().await.unwrap();
 }
 
 async fn do_test_all() -> Result<(), Box<dyn std::error::Error>> {
-    let mut cmds = ChildDropper::new();
-
     let nats = Command::new("nats-streaming-server")
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .spawn()?;
 
-    cmds.track(nats);
+    let _nats = DropKiller { child: nats };
 
     let proximo = Command::new("proximo-server")
         .args(&["nats-streaming"])
@@ -31,7 +25,7 @@ async fn do_test_all() -> Result<(), Box<dyn std::error::Error>> {
         .stderr(Stdio::null())
         .spawn()?;
 
-    cmds.track(proximo);
+    let _proximo = DropKiller { child: proximo };
 
     thread::sleep(time::Duration::from_millis(1000));
 
@@ -45,7 +39,7 @@ async fn do_test_all() -> Result<(), Box<dyn std::error::Error>> {
         .stderr(Stdio::null())
         .spawn()?;
 
-    cmds.track(plumber);
+    let _plumber = DropKiller { child: plumber };
 
     do_publishes().await?;
 
@@ -68,23 +62,13 @@ async fn do_publishes() -> Result<(), ProximoError> {
     Ok(())
 }
 
-/// ChildDropper tracks child processes and kills them when dropped.
-impl ChildDropper {
-    fn new() -> Self {
-        ChildDropper {
-            children: Vec::new(),
-        }
-    }
-
-    fn track(&mut self, c: Child) {
-        self.children.push(c)
-    }
+/// DropKiller tracks child processes and kills them when dropped.
+struct DropKiller {
+    child: Child,
 }
 
-impl std::ops::Drop for ChildDropper {
+impl std::ops::Drop for DropKiller {
     fn drop(&mut self) {
-        for child in self.children.iter_mut() {
-            child.kill().unwrap();
-        }
+        self.child.kill().unwrap();
     }
 }
