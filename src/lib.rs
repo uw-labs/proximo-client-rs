@@ -34,26 +34,22 @@ impl Sink {
 
             yield PublisherRequest{msg: None, start_request: Some(StartPublishRequest{topic:topic1})};
 
-            loop { // TODO: Deal with cancellation, assuming we need to here?
-                match reqs_rx.recv().await {
-                    None => {
-                        panic!("empty message : when does this happen?")
-                    }
-                    Some(req) => {
-                        let pubReq = PublisherRequest {
-                                msg: Some(req.m),
-                                start_request:None,
-                        };
-                        match toack_tx.send(req.done).await {
-                            Ok(()) => {}
-                            Err(e) => {
-                                panic!("handle this properly")
-                            }
-                        }
-                        yield pubReq;
+            // This loop exists when None is recieved, indicating that the sender end has been
+            // dropped.
+            while let Some(req) = reqs_rx.recv().await {
+                let pubReq = PublisherRequest {
+                        msg: Some(req.m),
+                        start_request:None,
+                };
+                match toack_tx.send(req.done).await {
+                    Ok(()) => {}
+                    Err(e) => {
+                        panic!("handle this properly")
                     }
                 }
+                yield pubReq;
             }
+
         };
 
         let _jh: JoinHandle<Result<(), ProximoError>> =
