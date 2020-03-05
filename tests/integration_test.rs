@@ -29,19 +29,39 @@ async fn do_test_all() -> Result<(), Box<dyn std::error::Error>> {
 
     thread::sleep(time::Duration::from_millis(1000));
 
-    let plumber = Command::new("plumber")
+    let mut plumber = Command::new("plumber")
         .args(&[
             "consume-all-raw",
             "--sourceurl",
             "nats-streaming://localhost:4222/topic1?cluster-id=test-cluster&queue-group=1",
         ])
         .stdout(Stdio::piped())
-        .stderr(Stdio::null())
+   .stderr(Stdio::null())
         .spawn()?;
 
-    let _plumber = DropKiller { child: plumber };
+    thread::sleep(time::Duration::from_millis(1000));
 
     do_publishes().await?;
+
+    thread::sleep(time::Duration::from_millis(2000));
+
+    plumber.kill()?;
+
+    let output = plumber.wait_with_output()?;
+
+    let s = String::from_utf8_lossy(&output.stdout);
+
+    let expected = "Hello from message id 1\n\
+                    Hello from message id 2\n\
+                    Hello from message id 3\n\
+                    Hello from message id 4\n\
+                    Hello from message id 5\n\
+                    Hello from message id 6\n\
+                    Hello from message id 7\n\
+                    Hello from message id 8\n\
+                    Hello from message id 9\n";
+
+    assert_eq!(expected, s);
 
     Ok(())
 }
