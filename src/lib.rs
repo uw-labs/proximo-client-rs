@@ -34,7 +34,7 @@ impl Sink {
 
             yield PublisherRequest{msg: None, start_request: Some(StartPublishRequest{topic:topic1})};
 
-            // This loop exists when None is recieved, indicating that the sender end has been
+            // This loop exits when None is recieved, indicating that the sender end has been
             // dropped.
             while let Some(req) = reqs_rx.recv().await {
                 let pubReq = PublisherRequest {
