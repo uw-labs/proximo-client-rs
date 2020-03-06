@@ -59,9 +59,7 @@ impl Sink {
                 let mut inbound = response.into_inner();
 
                 loop {
-                    let m = inbound.message().await?;
-
-                    match m {
+                    match inbound.message().await? {
                         None => panic!(
                         "empty message from proximo.  when does this happen?"
                     ),
