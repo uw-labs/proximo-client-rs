@@ -42,12 +42,14 @@ impl Sink {
                         start_request:None,
                 };
                 match toack_tx.send(req.done).await {
-                    Ok(()) => {}
+                    Ok(()) => {
+                        yield pubReq;
+                    }
                     Err(e) => {
-                        panic!("handle this properly")
+                        // this indicates the recieving handle has closed, so we have nothing left to do.
+                        break;
                     }
                 }
-                yield pubReq;
             }
 
         };
