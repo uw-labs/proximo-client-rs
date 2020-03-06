@@ -66,7 +66,10 @@ impl Sink {
                         "empty message from proximo server.  when does this happen?"
                     ),
                         Some(_conf) => match toack_rx.recv().await {
-                            None => panic!("when does this happen?"),
+                            None => {
+                                // This indicates the sending end is dropped, so we have nothing else to do.
+                                return Ok(());
+                            }
                             Some(mut to_ack) => {
                                 /*
                                 TODO: check the id is the one expected?
