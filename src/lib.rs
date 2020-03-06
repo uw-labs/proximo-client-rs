@@ -61,7 +61,7 @@ impl Sink {
                 loop {
                     match inbound.message().await? {
                         None => panic!(
-                        "empty message from proximo.  when does this happen?"
+                        "empty message from proximo server.  when does this happen?"
                     ),
                         Some(_conf) => match toack_rx.recv().await {
                             None => panic!("when does this happen?"),
