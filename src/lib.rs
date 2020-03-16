@@ -94,7 +94,7 @@ impl Sink {
     }
 
     pub async fn send_message(
-        &mut self,
+        &self,
         m: Message,
     ) -> Result<(), ProximoError> {
         let (done_tx, mut done_rx) =
@@ -102,7 +102,7 @@ impl Sink {
 
         let req = MessageRequest { m, done: done_tx };
 
-        self.reqs.send(req).await?;
+        self.reqs.clone().send(req).await?;
 
         match done_rx.recv().await {
             None => {

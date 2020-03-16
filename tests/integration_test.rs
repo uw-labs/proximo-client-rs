@@ -67,7 +67,7 @@ async fn do_test_all() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 async fn do_publishes() -> Result<(), ProximoError> {
-    let mut s = Sink::new("http://localhost:6868", "topic1").await?;
+    let s = Sink::new("http://localhost:6868", "topic1").await?;
 
     for id in 1..10 {
         let id = id.to_string();
