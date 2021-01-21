@@ -2,9 +2,11 @@ pub mod proximo {
     tonic::include_proto!("proximo");
 }
 
+use std::fmt;
+
+use futures::{channel::mpsc, SinkExt, StreamExt};
 use proximo::message_sink_client::MessageSinkClient;
 use proximo::{Message, PublisherRequest, StartPublishRequest};
-use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
 use tonic::Request;
 
@@ -15,11 +17,11 @@ pub struct Sink {
 
 struct MessageRequest {
     m: Message,
-    done: mpsc::Sender<Result<(), ProximoError>>,
+    done: mpsc::Sender<Result<(), Error>>,
 }
 
 impl Sink {
-    pub async fn new(url: &str, topic: &str) -> Result<Sink, ProximoError> {
+    pub async fn new(url: &str, topic: &str) -> Result<Sink, Error> {
         let mut client = MessageSinkClient::connect(url.to_string()).await?;
 
         let (mut toack_tx, mut toack_rx) = mpsc::channel(16);
@@ -36,16 +38,16 @@ impl Sink {
 
             // This loop exits when None is recieved, indicating that the sender end has been
             // dropped.
-            while let Some(req) = reqs_rx.recv().await {
-                let pubReq = PublisherRequest {
+            while let Some(req) = reqs_rx.next().await {
+                let pub_req = PublisherRequest {
                         msg: Some(req.m),
                         start_request:None,
                 };
                 match toack_tx.send(req.done).await {
                     Ok(()) => {
-                        yield pubReq;
+                        yield pub_req;
                     }
-                    Err(e) => {
+                    Err(_e) => {
                         // this indicates the recieving handle has closed, so we have nothing left to do.
                         break;
                     }
@@ -54,18 +56,17 @@ impl Sink {
 
         };
 
-        let _jh: JoinHandle<Result<(), ProximoError>> = tokio::spawn(
-            async move {
-                let response = client.publish(Request::new(outbound)).await?;
+        let _jh: JoinHandle<Result<(), Error>> = tokio::spawn(async move {
+            let response = client.publish(Request::new(outbound)).await?;
 
-                let mut inbound = response.into_inner();
+            let mut inbound = response.into_inner();
 
-                loop {
-                    match inbound.message().await? {
+            loop {
+                match inbound.message().await? {
                         None => panic!(
                         "empty message from proximo server.  when does this happen?"
                     ),
-                        Some(_conf) => match toack_rx.recv().await {
+                        Some(_conf) => match toack_rx.next().await {
                             None => {
                                 // This indicates the sending end is dropped, so we have nothing else to do.
                                 return Ok(());
@@ -74,7 +75,7 @@ impl Sink {
                                 /*
                                 TODO: check the id is the one expected?
                                 if to_ack.id != conf.msg_id {
-                                    return Err(Box::new(ProximoError::new(
+                                    return Err(Box::new(Error::new(
                                         "unexpected ack order",
                                     )));
                                 }
@@ -83,9 +84,8 @@ impl Sink {
                             }
                         },
                     }
-                }
-            },
-        );
+            }
+        });
 
         Ok(Sink {
             // client,
@@ -93,18 +93,14 @@ impl Sink {
         })
     }
 
-    pub async fn send_message(
-        &self,
-        m: Message,
-    ) -> Result<(), ProximoError> {
-        let (done_tx, mut done_rx) =
-            mpsc::channel::<Result<(), ProximoError>>(16);
+    pub async fn send_message(&mut self, m: Message) -> Result<(), Error> {
+        let (done_tx, mut done_rx) = mpsc::channel::<Result<(), Error>>(16);
 
         let req = MessageRequest { m, done: done_tx };
 
-        self.reqs.clone().send(req).await?;
+        self.reqs.send(req).await?;
 
-        match done_rx.recv().await {
+        match done_rx.next().await {
             None => {
                 panic!("no recv. what?");
             }
@@ -113,43 +109,39 @@ impl Sink {
     }
 }
 
-use std::fmt;
-
 #[derive(Debug)]
-pub struct ProximoError {
-    err: String,
+pub enum Error {
+    TonicStatus(tonic::Status),
+    TonicTransport(tonic::transport::Error),
+    Send(mpsc::SendError),
 }
 
-impl std::error::Error for ProximoError {}
+impl std::error::Error for Error {}
 
-impl fmt::Display for ProximoError {
+impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Oh no, something bad went down")
+        match *self {
+            Error::TonicStatus(ref err) => err.fmt(f),
+            Error::TonicTransport(ref err) => err.fmt(f),
+            Error::Send(ref err) => err.fmt(f),
+        }
     }
 }
 
-impl From<tonic::Status> for ProximoError {
-    fn from(err: tonic::Status) -> ProximoError {
-        ProximoError { err: format!("{}", err) }
+impl From<tonic::Status> for Error {
+    fn from(err: tonic::Status) -> Self {
+        Self::TonicStatus(err)
     }
 }
 
-impl From<tonic::transport::Error> for ProximoError {
-    fn from(err: tonic::transport::Error) -> ProximoError {
-        ProximoError { err: format!("{}", err) }
+impl From<tonic::transport::Error> for Error {
+    fn from(err: tonic::transport::Error) -> Self {
+        Self::TonicTransport(err)
     }
 }
 
-impl From<mpsc::error::SendError<MessageRequest>> for ProximoError {
-    fn from(err: mpsc::error::SendError<MessageRequest>) -> ProximoError {
-        ProximoError { err: format!("{}", err) }
-    }
-}
-
-impl From<mpsc::error::SendError<Result<(), ProximoError>>> for ProximoError {
-    fn from(
-        err: mpsc::error::SendError<Result<(), ProximoError>>,
-    ) -> ProximoError {
-        ProximoError { err: format!("{}", err) }
+impl From<mpsc::SendError> for Error {
+    fn from(err: mpsc::SendError) -> Self {
+        Self::Send(err)
     }
 }

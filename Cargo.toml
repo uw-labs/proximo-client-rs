@@ -7,11 +7,10 @@ build = "build.rs"
 
 [dependencies]
 async-stream = "0.3"
-tonic = { version = "0.4", features = ["tls", "tls-roots"] }
+futures = "0.3"
 prost = "0.7"
-futures-core = "0.3"
-futures-util = "0.3"
 tokio = { version = "1", features = ["rt"] }
+tonic = { version = "0.4", features = ["tls", "tls-roots"] }
 
 [build-dependencies]
 tonic-build = { version = "0.4" }
