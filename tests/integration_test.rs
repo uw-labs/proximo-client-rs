@@ -1,7 +1,7 @@
 extern crate proximo_client;
 
 use proximo_client::proximo::Message;
-use proximo_client::{ProximoError, Sink};
+use proximo_client::{Error, Sink};
 use std::process::{Child, Command, Stdio};
 use std::thread;
 use std::time;
@@ -66,7 +66,7 @@ async fn do_test_all() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-async fn do_publishes() -> Result<(), ProximoError> {
+async fn do_publishes() -> Result<(), Error> {
     let s = Sink::new("http://localhost:6868", "topic1").await?;
 
     for id in 1..10 {
