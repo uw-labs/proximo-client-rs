@@ -53,7 +53,6 @@ impl Sink {
                     }
                 }
             }
-
         };
 
         let _jh: JoinHandle<Result<(), Error>> = tokio::spawn(async move {
@@ -93,12 +92,12 @@ impl Sink {
         })
     }
 
-    pub async fn send_message(&mut self, m: Message) -> Result<AckResponse, Error> {
+    pub async fn send_message(&self, m: Message) -> Result<AckResponse, Error> {
         let (done_tx, done_rx) = mpsc::channel::<Result<(), Error>>(16);
 
         let req = MessageRequest { m, done: done_tx };
 
-        self.reqs.send(req).await?;
+        self.reqs.clone().send(req).await?;
 
         Ok(AckResponse{res:done_rx})
     }
