@@ -93,18 +93,30 @@ impl Sink {
         })
     }
 
-    pub async fn send_message(&mut self, m: Message) -> Result<(), Error> {
-        let (done_tx, mut done_rx) = mpsc::channel::<Result<(), Error>>(16);
+    pub async fn send_message(&mut self, m: Message) -> Result<AckResponse, Error> {
+        let (done_tx, done_rx) = mpsc::channel::<Result<(), Error>>(16);
 
         let req = MessageRequest { m, done: done_tx };
 
         self.reqs.send(req).await?;
 
-        match done_rx.next().await {
+        Ok(AckResponse{res:done_rx})
+    }
+}
+
+pub struct AckResponse {
+    res : mpsc::Receiver<Result<(), Error>>,
+}
+
+impl AckResponse {
+   pub async fn response(&mut self ) -> Result<(), Error> {
+        match self.res.next().await {
+            Some(res) => {
+                res
+            },
             None => {
-                panic!("no recv. what?");
+                Err(Error::Ack("closed before ack".to_string()))
             }
-            Some(recv_res) => Ok(recv_res?),
         }
     }
 }
@@ -114,16 +126,18 @@ pub enum Error {
     TonicStatus(tonic::Status),
     TonicTransport(tonic::transport::Error),
     Send(mpsc::SendError),
+    Ack(String),
 }
 
 impl std::error::Error for Error {}
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            Error::TonicStatus(ref err) => err.fmt(f),
-            Error::TonicTransport(ref err) => err.fmt(f),
-            Error::Send(ref err) => err.fmt(f),
+        match self {
+            Error::TonicStatus(err) => err.fmt(f),
+            Error::TonicTransport( err) => err.fmt(f),
+            Error::Send( err) => err.fmt(f),
+            Error::Ack( err) => err.fmt(f),
         }
     }
 }
